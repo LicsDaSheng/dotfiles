@@ -117,3 +117,27 @@ export GOPROXY=https://proxy.golang.com.cn,direct
 
 # Go Private
 # export GOPRIVATE=
+
+#PROXY_HOST=10.11.52.47
+PROXY_HOST=127.0.0.1
+#PROXY_PORT=3213
+PROXY_PORT=7890
+# toggle_vpn
+toggle_vpn() {
+  PROXY_HOST=$(ifconfig -a|grep inet|grep -v 127.0.0.1|grep -v inet6|awk 'NR==1 {print $2}'|tr -d "addr:")
+  echo "本机 IP $PROXY_HOST"
+      if [ -z "$https_proxy" ]; then
+          # 如果 http_proxy 未设置，打开它并将其设置为您想要的值
+            export https_proxy=http://$PROXY_HOST:$PROXY_PORT http_proxy=http://$PROXY_HOST:$PROXY_PORT all_proxy=socks5://$PROXY_HOST:$PROXY_PORT
+            echo "vpn is now set to $http_proxy $https_proxy $all_proxy"
+            echo "comand is https_proxy=http://$PROXY_HOST:$PROXY_PORT http_proxy=http://$PROXY_HOST:$PROXY_PORT all_proxy=socks5://$PROXY_HOST:$PROXY_PORT"
+      else
+          # 如果 http_proxy 已设置，关闭它
+          unset https_proxy
+          unset http_proxy
+          unset all_proxy
+          echo "vpn has been unset"
+      fi
+}
+#toggle_vpn
+

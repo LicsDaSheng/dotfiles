@@ -9,7 +9,7 @@
 DOTFILES=$HOME/.dotfiles
 EMACSD=$HOME/.emacs.d
 TMUX=$HOME/.tmux
-ZSH=$HOME/.zinit
+ZSH=$HOME/.local/share/zinit
 
 # Get OS informatio
 OS=`uname -s`
@@ -125,7 +125,7 @@ clean_dotfiles() {
     .zshenv
     .zshrc
     .zshrc.local
-    starship.toml
+    .Brewfile
     "
     for c in ${confs}; do
         [ -f $HOME/${c} ] && mv $HOME/${c} $HOME/${c}.bak
@@ -138,6 +138,7 @@ clean_dotfiles() {
     [ -d $EMACSD ] && mv $EMACSD $EMACSD.bak
 
     rm -rf $ZSH $TMUX $DOTFILES
+    rm -rf $HOME/.pip
 
     rm -f $HOME/.gitignore_global
     rm -f $HOME/.tmux.conf
@@ -174,24 +175,19 @@ if is_mac && ! command -v brew >/dev/null 2>&1; then
     # Install homebrew
 
     # Use mirror
-    export HOMEBREW_BREW_GIT_REMOTE="https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/brew.git"
-    export HOMEBREW_CORE_GIT_REMOTE="https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/homebrew-core.git"
-    export HOMEBREW_INSTALL_FROM_API=1
+    export HOMEBREW_BREW_GIT_REMOTE="https://mirrors.ustc.edu.cn/brew.git"
+    export HOMEBREW_CORE_GIT_REMOTE="https://mirrors.ustc.edu.cn/homebrew-core.git"
+    export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles"
+    export HOMEBREW_API_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/api"
+    export HOMEBREW_PIP_INDEX_URL="https://mirrors.ustc.edu.cn/pypi/simple"
 
-    # /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    /bin/bash -c "$(curl -fsSL https://cdn.jsdelivr.net/gh/Homebrew/install@HEAD/install.sh)"
+    /bin/bash -c "$(curl -fsSL https://github.com/Homebrew/install/raw/HEAD/install.sh)"
 
     if is_arm64; then
         echo >> $HOME/.zprofile
         echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $HOME/.zprofile
         eval "$(/opt/homebrew/bin/brew shellenv)"
     fi
-
-    # Tap cask-upgrade
-    brew tap buo/cask-upgrade
-
-    # Install GNU utilities
-    brew install coreutils
 elif is_cygwin && ! command -v apt-cyg >/dev/null 2>&1; then
     printf "${GREEN}▓▒░ Installing Apt-Cyg...${NORMAL}\n"
     APT_CYG=/usr/local/bin/apt-cyg
@@ -225,12 +221,9 @@ sh -c "$(curl -fsSL https://git.io/zinit-install)"
 printf "${GREEN}▓▒░ Installing Dotfiles...${NORMAL}\n"
 sync_repo seagle0128/dotfiles $DOTFILES
 
-chmod +x $DOTFILES/install.sh
-chmod +x $DOTFILES/install_brew_cask.sh
-chmod +x $DOTFILES/install_go.sh
-
 ln -sf $DOTFILES/.zshenv $HOME/.zshenv
 ln -sf $DOTFILES/.zshrc $HOME/.zshrc
+ln -sf $DOTFILES/Brewfile $HOME/.Brewfile
 ln -sf $DOTFILES/.vimrc $HOME/.vimrc
 ln -sf $DOTFILES/.tmux.conf.local $HOME/.tmux.conf.local
 ln -sf $DOTFILES/.markdownlintrc $HOME/.markdownlintrc
@@ -268,7 +261,7 @@ ln -sf $TMUX/.tmux.conf $HOME/.tmux.conf
 # Packages
 printf "${GREEN}▓▒░ Installing packages...${NORMAL}\n"
 if is_mac; then
-    ./install_brew.sh
+    brew bundle --global
 elif is_arch; then
     ./install_arch.sh
 elif is_debian; then

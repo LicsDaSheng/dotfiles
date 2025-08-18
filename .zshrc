@@ -62,14 +62,14 @@ zinit wait lucid light-mode depth"1" for \
 
 # Z
 if (( $+commands[zoxide] )); then
-    eval "$(zoxide init zsh)"
     export _ZO_FZF_OPTS="--scheme=path --tiebreak=end,chunk,index \
            --bind=ctrl-z:ignore,btab:up,tab:down --cycle --keep-right \
            --border=sharp --height=45% --info=inline --layout=reverse \
            --tabstop=1 --exit-0 --select-1 \
-           --preview '(eza --tree --icons --level 3 --color=always \
-           --group-directories-first {2} || tree -NC {2} || \
-           ls --color=always --group-directories-first {2}) 2>/dev/null | head -200'"
+           --preview '(eza --tree --level 3 --color=always \
+           --group-directories-first {2} || tree -NC {2}) 2>/dev/null'"
+    unalias zi
+    eval "$(zoxide init zsh)"
 else
     zinit ice wait lucid depth"1"
     zinit light agkozak/zsh-z
@@ -120,38 +120,42 @@ zinit light wfxr/forgit
 zinit ice wait lucid depth"1" atload"zicompinit; zicdreplay" blockf
 zinit light Aloxaf/fzf-tab
 
-export FZF_DEFAULT_COMMAND="fd --type f --hidden --follow --exclude .git || \
-                               git ls-tree -r --name-only HEAD || \
-                               rg --files --hidden --follow --glob '!.git' || \
-                               find ."
+export FZF_DEFAULT_COMMAND="fd --type f --strip-cwd-prefix --hidden --follow --exclude .git || \
+  rg --files --hidden --follow --glob '!.git'"
+export FZF_DEFAULT_OPTS='--height 40% --tmux bottom,40% --layout reverse --border'
 export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
-export FZF_DEFAULT_OPTS='--height 40% --tmux 100%,60% --border'
-export FZF_CTRL_T_OPTS="--preview '(bat --style=numbers --color=always {} || \
-                       cat {} || tree -NC {}) 2>/dev/null | head -200'"
-export FZF_CTRL_R_OPTS="--preview 'echo {}' --preview-window down:3:hidden:wrap --bind '?:toggle-preview' --exact"
-export FZF_ALT_C_OPTS="--preview '(eza --tree --icons --level 3 --color=always --group-directories-first {} || \
-                       tree -NC {} || ls --color=always --group-directories-first {}) 2>/dev/null | head -200'"
+export FZF_CTRL_T_OPTS="--walker-skip .git,node_modules,target
+  --preview 'bat -n --color=always {} || cat {} || tree -NC {}'
+  --bind 'ctrl-/:change-preview-window(down|hidden|)'"
+export FZF_CTRL_R_OPTS="--preview 'echo {} | cut -f 2 | bat --color=always --plain --language=sh'
+  --preview-window down:3:wrap --bind '?:toggle-preview' --exact"
+export FZF_ALT_C_OPTS="--walker-skip .git,node_modules,target
+  --preview '(eza --tree --level 3 --color=always --group-directories-first {} || \
+  tree -NC {} || ls --color=always --group-directories-first {}) | head -200'"
 
-zstyle ':completion:*' menu no
+# set descriptions format to enable group support
+# NOTE: don't use escape sequences (like '%F{red}%d%f') here, fzf-tab will ignore them
 zstyle ':completion:*:descriptions' format '[%d]'
+# set list-colors to enable filename colorizing
 zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
-zstyle ':completion:complete:*:options' sort false
-
-# Switch group using `<` and `>`
+# force zsh not to show completion menu, which allows fzf-tab to capture the unambiguous prefix
+zstyle ':completion:*' menu no
+# preview directory's content with eza when completing cd
+zstyle ':fzf-tab:complete:cd:*' fzf-preview \
+       'eza -1 --color=always --group-directories-first $realpath || \
+       ls -1 --color=always --group-directories-first $realpath'
+# custom fzf flags
+# NOTE: fzf-tab does not follow FZF_DEFAULT_OPTS by default
+# zstyle ':fzf-tab:*' fzf-flags --color=fg:1,fg+:2 --bind=tab:accept
+# To make fzf-tab follow FZF_DEFAULT_OPTS.
+# NOTE: This may lead to unexpected behavior since some flags break this plugin. See Aloxaf/fzf-tab#455.
+zstyle ':fzf-tab:*' use-fzf-default-opts yes
+# switch group using `<` and `>`
 zstyle ':fzf-tab:*' switch-group '<' '>'
 
-# Preview directory's content
-# zstyle ':fzf-tab:complete:(cd|ls|lsd|exa|eza|bat|cat|emacs|nano|vi|vim):*' \
-    #        fzf-preview 'eza -1 --icons --color=always --group-directories-first $realpath 2>/dev/null || \
-    #                     ls -1 --color=always --group-directories-first $realpath'
-
-# Preview contents
-zstyle ':fzf-tab:complete:*:*' fzf-preview 'less ${(Q)realpath}'
-export LESSOPEN='|~/.dotfiles/.lessfilter %s'
-
-# Preview environment vareiables
-zstyle ':fzf-tab:complete:(-command-|-parameter-|-brace-parameter-|export|unset|expand):*' \
-       fzf-preview 'echo ${(P)word}'
+# Preview environment variables
+zstyle ':fzf-tab:complete:(export|unset|expand):*' fzf-preview \
+       'echo ${(P)word} | bat -plhelp --color=always'
 
 # Preivew `kill` and `ps` commands
 zstyle ':completion:*:*:*:*:processes' command 'ps -u $USER -o pid,user,comm -w -w'
@@ -163,7 +167,6 @@ zstyle ':fzf-tab:complete:(kill|ps):argument-rest' fzf-preview \
             ps --pid=$word -o cmd --no-headers -w -w
         fi'
 zstyle ':fzf-tab:complete:(kill|ps):argument-rest' fzf-flags '--preview-window=down:3:wrap'
-zstyle ':fzf-tab:complete:systemctl-*:*' fzf-preview 'SYSTEMD_COLORS=1 systemctl status $word'
 
 # Preivew `git` commands
 zstyle ':fzf-tab:complete:git-(add|diff|restore):*' fzf-preview \
@@ -190,10 +193,17 @@ zstyle ':fzf-tab:complete:(\\|*/|)man:*' fzf-preview 'man $word | bat -plman --c
 zstyle ':fzf-tab:complete:tldr:argument-1' fzf-preview 'tldr --color always $word'
 
 # Preview brew
-zstyle ':fzf-tab:complete:brew-(install|uninstall|search|info):*-argument-rest' fzf-preview 'brew info $word'
+zstyle ':fzf-tab:complete:brew-(install|uninstall|search|info):*-argument-rest' fzf-preview \
+       'brew info $word | bat -plhelp --color=always'
 
 # Preview systemd
 zstyle ':fzf-tab:complete:systemctl-*:*' fzf-preview 'SYSTEMD_COLORS=1 systemctl status $word'
+
+# Commands
+zstyle ':fzf-tab:complete:-command-:*' fzf-preview \
+       '(out=$(tldr --color always "$word") 2>/dev/null && echo $out) ||
+        (out=$(man "$word" | bat -plman --color=always) 2>/dev/null && echo $out) ||
+        (out=$(which "$word") && echo $out) || echo "${(P)word}"'
 
 # Ripgrep integration
 function rgv () {
@@ -227,39 +237,25 @@ elif [[ $OSTYPE == linux* ]]; then
     fi
 fi
 
-# lsp booster
-if (( $+commands[emacs-lsp-booster] == 0 )); then
-    zinit ice wait lucid depth"1" from"gh-r" sbin"**/emacs-lsp-booster"
-    zinit light blahgeek/emacs-lsp-booster
-fi
-
 #
 # Aliases
 #
 
 # General
 alias zshconf="$EDITOR $HOME/.zshrc; $EDITOR $HOME/.zshrc.local"
+alias reload='exec zsh'
 alias h='history'
 alias c='clear'
 
 # Modern Unix commands
 # See https://github.com/ibraheemdev/modern-unix
 if (( $+commands[eza] )); then
-    if [ -n "$INSIDE_EMACS" ]; then
-        alias ls='eza --color=auto --group-directories-first'
-    else
-        alias ls='eza --color=auto --icons --group-directories-first'
-    fi
+    alias ls='eza --color=auto --group-directories-first'
+    alias lsi='ls --icons'
     alias l='ls -lhF'
     alias la='ls -lhAF'
-    alias tree='ls --tree'
-elif (( $+commands[exa] )); then
-    if [ -n "$INSIDE_EMACS" ]; then
-        alias ls='exa --color=auto --group-directories-first'
-    else
-        alias ls='exa --color=auto --icons --group-directories-first'
-    fi
-    alias la='ls -lahF'
+    alias lg='ls -lhAF --git'
+    alias li='ls -lhF --icons'
     alias tree='ls --tree'
 fi
 (( $+commands[bat] )) && alias cat='bat -p --wrap character'
@@ -299,25 +295,25 @@ alias upgrade_omt='cd $HOME/.tmux && upgrade_repo; cd - >/dev/null'
 alias upgrade_zinit='zinit self-update && zinit update -a -p && zinit compinit'
 alias upgrade_env='upgrade_dotfiles; sh $DOTFILES/install.sh'
 
-(( $+commands[cargo] )) && alias upgrade_cargo='cargo install-update -a' # cargo install cargo-update
+(( $+commands[cargo] )) && alias upgrade_cargo='cargo install cargo-update; cargo install-update -a'
 (( $+commands[gem] )) && alias upgrade_gem='gem update && gem cleanup'
 (( $+commands[go] )) && alias upgrade_go='$DOTFILES/install_go.sh'
 (( $+commands[npm] )) && alias upgrade_npm='for package in $(npm -g outdated --parseable --depth=0 | cut -d: -f2); do npm -g install "$package"; done'
-(( $+commands[pip] )) && alias upgrade_pip="pip list --outdated --format=json | python -c '
+(( ! $+commands[brew] )) && (( $+commands[pip] )) && alias upgrade_pip="pip list --outdated --format=json | python -c '
 import json
 import sys
 
 for item in json.loads(sys.stdin.read()):
     print(\"=\".join([item[\"name\"], item[\"latest_version\"]]))
 ' | grep -v '^\-e' | cut -d = -f 1 | xargs -n1 pip install -U"
-(( $+commands[pip3] )) && alias upgrade_pip="pip3 list --outdated --format=json | python3 -c '
+(( ! $+commands[brew] )) && (( $+commands[pip3] )) && alias upgrade_pip3="pip3 list --outdated --format=json | python3 -c '
 import json
 import sys
 
 for item in json.loads(sys.stdin.read()):
     print(\"=\".join([item[\"name\"], item[\"latest_version\"]]))
 ' | grep -v '^\-e' | cut -d = -f 1 | xargs -n1 pip3 install -U"
-(( $+commands[brew] )) && alias upgrade_brew='brew update'; alias upgrade_brew_cask='$DOTFILES/install_brew_cask.sh'
+(( $+commands[brew] )) && alias upgrade_brew='brew bundle --global; bua'
 
 # Proxy
 PROXY=http://127.0.0.1:7897         # ss:1088, vr:8001

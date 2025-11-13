@@ -130,7 +130,7 @@ export FZF_CTRL_T_OPTS="--walker-skip .git,node_modules,target
 export FZF_CTRL_R_OPTS="--preview 'echo {} | cut -f 2 | bat --color=always --plain --language=sh'
   --preview-window down:3:wrap --bind '?:toggle-preview' --exact"
 export FZF_ALT_C_OPTS="--walker-skip .git,node_modules,target
-  --preview '(eza --tree --level 3 --color=always --group-directories-first {} || \
+  --preview '(eza --tree --level 3 --color=always --icons=auto --group-directories-first {} || \
   tree -NC {} || ls --color=always --group-directories-first {}) | head -200'"
 
 # set descriptions format to enable group support
@@ -142,8 +142,12 @@ zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
 zstyle ':completion:*' menu no
 # preview directory's content with eza when completing cd
 zstyle ':fzf-tab:complete:cd:*' fzf-preview \
-       'eza -1 --color=always --group-directories-first $realpath || \
+       'eza -1 --color=always --icons=auto --group-directories-first $realpath || \
        ls -1 --color=always --group-directories-first $realpath'
+# preview context of the file or directory
+zstyle ':fzf-tab:complete:(ls|exa|eza|bat|cat|vi|vim|nvim|emacs|code|cursor):*' fzf-preview \
+       'bat --color=always --plain --language=sh $realpath 2>/dev/null || \
+       eza -1 --color=always --icons=auto --group-directories-first $realpath'
 # custom fzf flags
 # NOTE: fzf-tab does not follow FZF_DEFAULT_OPTS by default
 # zstyle ':fzf-tab:*' fzf-flags --color=fg:1,fg+:2 --bind=tab:accept
@@ -220,9 +224,9 @@ function rgv () {
 if [[ $OSTYPE == darwin* ]]; then
     zinit snippet PZTM::osx
     if (( $+commands[brew] )); then
-        alias bu='brew update; brew upgrade; brew cleanup'
-        alias bcu='brew cu --all --yes --cleanup'
-        alias bua='bu; bcu'
+        alias bu='brew upgrade'
+        alias bcu='brew cu --all --include-mas --yes'
+        alias bua='bu; bcu; brew cleanup --prune=all'
     fi
 elif [[ $OSTYPE == linux* ]]; then
     if (( $+commands[apt-get] )); then
@@ -250,12 +254,10 @@ alias c='clear'
 # Modern Unix commands
 # See https://github.com/ibraheemdev/modern-unix
 if (( $+commands[eza] )); then
-    alias ls='eza --color=auto --group-directories-first'
-    alias lsi='ls --icons'
-    alias l='ls -lhF'
-    alias la='ls -lhAF'
-    alias lg='ls -lhAF --git'
-    alias li='ls -lhF --icons'
+    alias ls='eza --color=auto --icons=auto --group-directories-first'
+    alias l='ls -lh'
+    alias la='ls -lhA'
+    alias lg='ls -lhA --git'
     alias tree='ls --tree'
 fi
 (( $+commands[bat] )) && alias cat='bat -p --wrap character'
@@ -288,11 +290,11 @@ alias rte="$EDITOR -e '(let ((last-nonmenu-event nil) (kill-emacs-query-function
 
 # Upgrade
 alias upgrade_repo='git pull --rebase --stat origin master'
-alias upgrade_dotfiles='cd $DOTFILES && upgrade_repo; cd - >/dev/null'
+alias upgrade_dotfiles='cd $DOTFILES && upgrade_repo; cd - >/dev/null; reload'
 alias upgrade_emacs='emacs -Q --batch -L "$EMACSD/lisp/" -l "init-package.el" \
                            --eval "(progn (package-initialize) (update-config-and-packages))"'
 alias upgrade_omt='cd $HOME/.tmux && upgrade_repo; cd - >/dev/null'
-alias upgrade_zinit='zinit self-update && zinit update -a -p && zinit compinit'
+alias upgrade_zinit='zinit self-update && zinit update -a -p && zinit compinit && reload'
 alias upgrade_env='upgrade_dotfiles; sh $DOTFILES/install.sh'
 
 (( $+commands[cargo] )) && alias upgrade_cargo='cargo install cargo-update; cargo install-update -a'

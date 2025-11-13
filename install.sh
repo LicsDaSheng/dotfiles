@@ -84,7 +84,7 @@ sync_repo() {
 
     if [ ! -e "$repo_path" ]; then
         mkdir -p "$repo_path"
-        git clone --depth 1 --branch $repo_branch "https://github.com/$repo_uri.git" "$repo_path"
+        git clone --depth 1 --single-branch --branch $repo_branch "https://github.com/$repo_uri.git" "$repo_path"
     else
         cd "$repo_path" && git pull --rebase --stat origin $repo_branch; cd - >/dev/null
     fi
@@ -228,6 +228,7 @@ ln -sf $DOTFILES/.vimrc $HOME/.vimrc
 ln -sf $DOTFILES/.tmux.conf.local $HOME/.tmux.conf.local
 ln -sf $DOTFILES/.markdownlintrc $HOME/.markdownlintrc
 ln -sf $DOTFILES/starship.toml $HOME/.config/starship.toml
+mkdir -p $HOME/.config/ghostty && ln -sf $DOTFILES/ghostty.config $HOME/.config/ghostty/config
 
 cp -n $DOTFILES/.npmrc $HOME/.npmrc
 cp -n $DOTFILES/.gemrc $HOME/.gemrc
